@@ -30,7 +30,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         # Instalamos directamente las que necesitamos
-        pip install pytest pytest-qt PySide6 openpyxl
+        pip install pytest pytest-qt PySide6 openpyxl pyinstaller
 
     - name: Run Tests with pytest (using xvfb)
       run: |
