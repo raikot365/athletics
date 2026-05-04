@@ -1,0 +1,30 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# --- Base de Datos (SQLite) ---
+*.db
+*.sqlite3
+
+# --- Reportes y Salidas ---
+*.xlsx
+
+# --- Documentación (Doxygen) ---
+docs/html/
+docs/latex/
+Doxyfile.bak
+
+# --- IDEs y Editores ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Sistema Operativo ---
+.DS_Store
+Thumbs.db

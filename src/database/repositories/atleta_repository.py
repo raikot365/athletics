@@ -1,0 +1,51 @@
+## @file atleta_repository.py
+#  @brief Repositorio para la gestión de datos de atletas.
+
+import sqlite3
+from database.database_manager import DatabaseManager
+from models.atleta import Atleta
+
+class AtletaRepository:
+    def __init__(self, db_manager: DatabaseManager):
+        self.db = db_manager
+
+    ## Agrega un nuevo atleta a la base de datos.
+    def crear(self, atleta: Atleta):
+        query = """INSERT INTO ATLETA (dni, nombre, apellido, fecha_nacimiento, id_localidad, provincia, club) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?)"""
+        with self.db.obtener_conexion() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, (atleta.dni, atleta.nombre, atleta.apellido, 
+                                 atleta.fecha_nacimiento, atleta.id_localidad, 
+                                 atleta.provincia, atleta.club))
+            atleta.id_atleta = cursor.lastrowid
+            conn.commit()
+
+    ## Busca atletas aplicando un filtro de texto (DNI, Nombre o Apellido).
+    def buscar_filtrado(self, texto: str):
+        query = """SELECT * FROM ATLETA 
+                   WHERE dni LIKE ? OR nombre LIKE ? OR apellido LIKE ?"""
+        filtro = f"%{texto}%"
+        with self.db.obtener_conexion() as conn:
+            conn.row_factory = sqlite3.Row # Permite acceder por nombre de columna
+            cursor = conn.cursor()
+            cursor.execute(query, (filtro, filtro, filtro))
+            return [Atleta(**dict(row)) for row in cursor.fetchall()]
+
+    def buscar_para_inscripcion(self, texto: str, id_prueba: int, instancia: str):
+        """Busca atletas por DNI, Nombre o Apellido para el selector. Excluye a los ya inscritos en la instancia de la prueba."""
+        query = """
+            SELECT id_atleta, dni, nombre, apellido FROM ATLETA 
+            WHERE (dni LIKE ? OR nombre LIKE ? OR apellido LIKE ?)
+            AND id_atleta NOT IN (
+                SELECT id_atleta FROM PARTICIPA 
+                WHERE id_prueba = ? AND instancia = ?
+            )
+            LIMIT 10
+        """
+        filtro = f"%{texto}%"
+        with self.db.obtener_conexion() as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute(query, (filtro, filtro, filtro, id_prueba, instancia))
+            return cursor.fetchall()
