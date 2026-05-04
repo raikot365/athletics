@@ -15,7 +15,7 @@ def db_manager():
     """Configura una base de datos limpia en memoria para cada test."""
     db = DatabaseManager()
     db.db_path = ":memory:" # Usamos RAM para que sea ultra rápido y no deje basura
-    db.inicializar_base_datos()
+    db.inicializar_base_de_datos()
     return db
 
 @pytest.fixture
