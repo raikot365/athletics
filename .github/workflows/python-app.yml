@@ -40,7 +40,7 @@ jobs:
     - name: Build EXE
       run: |
         # Ejecutamos desde la raíz del repo
-        pyinstaller --noconsole --onefile --paths=src --icon=assets/logo.ico --add-data "assets/logo.png;assets" main.py --name "Atletismo"
+        python -m PyInstaller --noconsole --onefile --paths=src --icon=assets/logo.ico --add-data "assets/logo.png;assets" main.py --name "Atletismo"
       
     - name: Upload Release Asset
       uses: softprops/action-gh-release@v1
