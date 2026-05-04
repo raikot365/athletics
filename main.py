@@ -1,44 +1,51 @@
 ## @file main.py
-#  @brief Punto de entrada principal de la App de Atletismo.
+#  @brief Punto de entrada principal en la raíz del proyecto.
 
 import sys
 import os
-
-# Asegurar que la carpeta 'src' esté en el path para las importaciones
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
-
 from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QIcon
+
+# --- GESTIÓN DE RUTAS PARA RECURSOS (LOGO) ---
+def resource_path(relative_path):
+    """ Gestiona rutas para archivos internos en el .exe y desarrollo. """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+# Importamos desde la carpeta 'src'
 from src.database.database_manager import DatabaseManager
 from src.ui.main_window import MainWindow
 
 def bootstrap():
-    """
-    Inicializa los servicios esenciales antes de lanzar la interfaz.
-    """
-    # 1. Inicializar la base de datos
-    # Si prefieres una ruta específica, cámbiala aquí
+    """ Inicializa la base de datos antes de arrancar. """
+    # Se crea en la raíz junto al ejecutable/script
     db_manager = DatabaseManager("atletismo_misiones.db")
+    
+    # IMPORTANTE: Verifica si tu método es 'inicializar_base_datos' 
+    # o 'inicializar_base_de_datos' según tu DatabaseManager.
     db_manager.inicializar_base_de_datos()
     
     return db_manager
 
 def main():
-    # Crear la aplicación Qt
     app = QApplication(sys.argv)
-    
-    # Estilo general para la aplicación (opcional)
     app.setStyle("Fusion") 
 
-    # Inicializar base de datos y obtener el manager
-    db_manager = bootstrap()
+    # --- CONFIGURAR LOGO ---
+    # Asumimos que el logo está en src/assets/logo.png
+    logo_path = resource_path(os.path.join("assets", "logo.png"))
+    if os.path.exists(logo_path):
+        app.setWindowIcon(QIcon(logo_path))
 
-    # Lanzar la ventana principal
-    # Nota: Más adelante pasaremos el db_manager a la ventana
-    # para que las vistas puedan acceder a los repositorios.
+    # Iniciar servicios e interfaz
+    db_manager = bootstrap()
     window = MainWindow(db_manager)
+    window.setWindowTitle("Atletismo v1.0")
     window.show()
 
-    # Ejecutar el bucle de eventos
     sys.exit(app.exec())
 
 if __name__ == "__main__":

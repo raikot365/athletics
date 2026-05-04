@@ -28,3 +28,8 @@ Doxyfile.bak
 # --- Sistema Operativo ---
 .DS_Store
 Thumbs.db
+
+# --- PyInstaller (Compilación) ---
+build/
+dist/
+*.spec

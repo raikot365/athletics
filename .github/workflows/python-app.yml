@@ -36,3 +36,15 @@ jobs:
       run: |
         # xvfb-run simula el entorno gráfico para PySide6
         xvfb-run -a pytest tests/ -v
+      
+    - name: Build EXE
+      run: |
+        # Ejecutamos desde la raíz del repo
+        pyinstaller --noconsole --onefile --paths=src --icon=assets/logo.ico --add-data "assets/logo.png;assets" main.py --name "Atletismo"
+      
+    - name: Upload Release Asset
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/Atletismo.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
