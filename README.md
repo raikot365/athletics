@@ -66,7 +66,7 @@ Sistema para torneos de atletismo, desarrollado con **Python** y **PySide6**. Es
 
 4.  **Ejecutar la aplicación:**
     ```bash
-    python src/main.py
+    python main.py
     ```
 
 ## 🧪 Pruebas
