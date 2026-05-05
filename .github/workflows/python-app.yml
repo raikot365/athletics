@@ -7,7 +7,7 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  build-and-test:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -38,9 +38,9 @@ jobs:
         xvfb-run -a pytest tests/ -v
       
   release:
-    needs: build-and-test
+    needs: test
 
-    if: startsWith(github.ref, 'refs/tags/')
+    # if: startsWith(github.ref, 'refs/tags/')
     runs-on: windows-latest
     
     steps:
