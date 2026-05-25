@@ -199,7 +199,7 @@ class TorneosView(QWidget):
             return
 
         # Pasamos el ID del torneo al diálogo
-        dialog = NuevaPruebaDialog(self.torneo_seleccionado_id, self)
+        dialog = NuevaPruebaDialog(self.torneo_seleccionado_id, parent=self)
 
         if dialog.exec() == QDialog.Accepted:
             nueva_prueba = dialog.prueba_creada
