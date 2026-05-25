@@ -9,14 +9,29 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../s
 from database.database_manager import DatabaseManager
 from database.repositories.torneo_repository import TorneoRepository
 from database.repositories.participacion_repository import ParticipacionRepository
+from database.repositories.atleta_repository import AtletaRepository
+from database.repositories.prueba_repository import PruebaRepository
 
 @pytest.fixture
 def db_manager():
-    """Configura una base de datos limpia en memoria para cada test."""
-    db = DatabaseManager()
-    db.db_path = ":memory:" # Usamos RAM para que sea ultra rápido y no deje basura
+    """Configura una base de datos limpia para cada test."""
+    db_file = "test_atletismo.db"
+    if os.path.exists(db_file):
+        try:
+            os.remove(db_file)
+        except OSError:
+            pass
+            
+    db = DatabaseManager(db_file)
     db.inicializar_base_de_datos()
-    return db
+    
+    yield db
+    
+    if os.path.exists(db_file):
+        try:
+            os.remove(db_file)
+        except OSError:
+            pass
 
 @pytest.fixture
 def repo_torneo(db_manager):
@@ -25,3 +40,11 @@ def repo_torneo(db_manager):
 @pytest.fixture
 def repo_participacion(db_manager):
     return ParticipacionRepository(db_manager)
+
+@pytest.fixture
+def repo_atleta(db_manager):
+    return AtletaRepository(db_manager)
+
+@pytest.fixture
+def repo_prueba(db_manager):
+    return PruebaRepository(db_manager)

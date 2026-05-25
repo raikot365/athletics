@@ -8,6 +8,12 @@ from PySide6.QtCore import Qt
 from models.prueba import Prueba
 from ui.views.dialogs.inscripcion_dialog import InscripcionDialog
 
+class TimeInputField(QLineEdit):
+    def focusInEvent(self, event):
+        super().focusInEvent(event)
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(0, self.selectAll)
+
 class PruebaWidget(QFrame):
     """
     Widget tipo acordeón que gestiona los resultados de una prueba.
@@ -40,25 +46,54 @@ class PruebaWidget(QFrame):
 
     def _setup_header(self):
         """
-        Crea la cabecera clickable del acordeón.
+        Crea la cabecera clickable del acordeón con botones de acciones.
         """
+        header_widget = QWidget()
+        header_widget.setFixedHeight(40)
+        header_widget.setStyleSheet("background-color: #f5f6fa; border-bottom: 1px solid #dcdde1;")
+        
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(5, 0, 5, 0)
+        header_layout.setSpacing(2)
+        
+        # Botón del acordeón (título)
         self.header_button = QPushButton(f"  ▶  {self.prueba.nombre} - {self.prueba.categoria} ({self.prueba.sexo})")
-        self.header_button.setFixedHeight(40)
         self.header_button.setCursor(Qt.PointingHandCursor)
         self.header_button.setStyleSheet("""
             QPushButton {
-                background-color: #f5f6fa;
+                background-color: transparent;
                 border: none;
                 text-align: left;
                 font-weight: bold;
                 font-size: 13px;
                 color: #2f3640;
-                border-bottom: 1px solid #dcdde1;
             }
-            QPushButton:hover { background-color: #ebedf0; }
+            QPushButton:hover { color: #2980b9; }
         """)
         self.header_button.clicked.connect(self.toggle_collapse)
-        self.main_layout.addWidget(self.header_button)
+        header_layout.addWidget(self.header_button, 1) # Estirar
+        
+        # Botón Editar Prueba
+        self.btn_edit_prueba = QPushButton("✏️")
+        self.btn_edit_prueba.setToolTip("Editar Prueba")
+        self.btn_edit_prueba.setFixedWidth(30)
+        self.btn_edit_prueba.setFixedHeight(30)
+        self.btn_edit_prueba.setCursor(Qt.PointingHandCursor)
+        self.btn_edit_prueba.setStyleSheet("QPushButton { border: none; background: transparent; } QPushButton:hover { background-color: #ebedf0; border-radius: 3px; }")
+        self.btn_edit_prueba.clicked.connect(self.abrir_editar_prueba)
+        header_layout.addWidget(self.btn_edit_prueba)
+        
+        # Botón Eliminar Prueba
+        self.btn_delete_prueba = QPushButton("🗑️")
+        self.btn_delete_prueba.setToolTip("Eliminar Prueba")
+        self.btn_delete_prueba.setFixedWidth(30)
+        self.btn_delete_prueba.setFixedHeight(30)
+        self.btn_delete_prueba.setCursor(Qt.PointingHandCursor)
+        self.btn_delete_prueba.setStyleSheet("QPushButton { border: none; background: transparent; } QPushButton:hover { background-color: #ebedf0; border-radius: 3px; }")
+        self.btn_delete_prueba.clicked.connect(self.confirmar_eliminacion_prueba)
+        header_layout.addWidget(self.btn_delete_prueba)
+        
+        self.main_layout.addWidget(header_widget)
 
     def _setup_content(self):
         """
@@ -71,7 +106,7 @@ class PruebaWidget(QFrame):
         self.tools_layout = QHBoxLayout()
 
         # 1. Botón de Inscripción (Lado izquierdo)
-        self.btn_abrir_inscripcion = QPushButton("+ Inscribir Atleta")
+        self.btn_abrir_inscripcion = QPushButton("Inscribir Atleta")
         self.btn_abrir_inscripcion.setStyleSheet("background-color: #3498db; color: white; font-weight: bold; padding: 5px 10px;")
         self.btn_abrir_inscripcion.clicked.connect(self.abrir_inscripcion)
         self.tools_layout.addWidget(self.btn_abrir_inscripcion)
@@ -110,9 +145,9 @@ class PruebaWidget(QFrame):
         self.time_layout.setContentsMargins(0,0,0,0)
         self.time_layout.setSpacing(2)
 
-        self.input_mm = QLineEdit("00")
-        self.input_ss = QLineEdit("00")
-        self.input_cc = QLineEdit("00")
+        self.input_mm = TimeInputField("00")
+        self.input_ss = TimeInputField("00")
+        self.input_cc = TimeInputField("00")
 
         for inp in [self.input_mm, self.input_ss, self.input_cc]:
             inp.setFixedWidth(30)
@@ -150,6 +185,8 @@ class PruebaWidget(QFrame):
         ])
         self.tabla_resultados.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.tabla_resultados.setSelectionBehavior(QTableWidget.SelectRows)
+        self.tabla_resultados.itemChanged.connect(self.al_cambiar_item_tabla)
+        self.tabla_resultados.setMinimumHeight(170)
         self.content_layout.addWidget(self.tabla_resultados)
 
         # Ocultar por defecto e insertar en el layout principal del Frame
@@ -176,6 +213,12 @@ class PruebaWidget(QFrame):
 
     def cargar_participantes(self):
         """Refresca la tabla y calcula la posición dinámicamente."""
+        # Desconectar temporalmente la señal para evitar bucles durante la carga
+        try:
+            self.tabla_resultados.itemChanged.disconnect(self.al_cambiar_item_tabla)
+        except TypeError:
+            pass
+
         instancia_filtro = self.combo_instancia.currentText()
         filtro = None if instancia_filtro == "Todas" else instancia_filtro
 
@@ -194,31 +237,44 @@ class PruebaWidget(QFrame):
             self.tabla_resultados.insertRow(row)
             
             # Celdas básicas
-            self.tabla_resultados.setItem(row, 0, QTableWidgetItem(str(p.numero_dorsal)))
-            self.tabla_resultados.setItem(row, 1, QTableWidgetItem(f"{p.apellido}, {p.nombre}"))
+            dorsal_str = str(p.numero_dorsal) if p.numero_dorsal is not None else "---"
+            item_dorsal = QTableWidgetItem(dorsal_str)
+            item_dorsal.setData(Qt.UserRole, p.id_participacion)
+            item_dorsal.setFlags(item_dorsal.flags() | Qt.ItemIsEditable)
+            self.tabla_resultados.setItem(row, 0, item_dorsal)
+            
+            item_nombre = QTableWidgetItem(f"{p.apellido}, {p.nombre}")
+            item_nombre.setFlags(item_nombre.flags() & ~Qt.ItemIsEditable)
+            self.tabla_resultados.setItem(row, 1, item_nombre)
             
             # Instancia (le damos un color diferente para resaltar el agrupamiento)
             item_instancia = QTableWidgetItem(p.instancia)
+            item_instancia.setFlags(item_instancia.flags() & ~Qt.ItemIsEditable)
             if p.instancia == "Final":
                 item_instancia.setForeground(Qt.darkBlue)
-            self.tabla_resultados.setItem(row, 2, QTableWidgetItem(item_instancia))
+            self.tabla_resultados.setItem(row, 2, item_instancia)
             
             # Resultado
             tiempo = p.resultado if p.resultado else "---"
-            self.tabla_resultados.setItem(row, 3, QTableWidgetItem(tiempo))
+            item_resultado = QTableWidgetItem(tiempo)
+            item_resultado.setFlags(item_resultado.flags() & ~Qt.ItemIsEditable)
+            self.tabla_resultados.setItem(row, 3, item_resultado)
             
             # --- POSICIÓN DINÁMICA POR BLOQUE ---
+            item_pos = QTableWidgetItem(f"{pos_contador}" if p.resultado and p.resultado != "---" and p.resultado != "00:00.00" else "-")
+            item_pos.setFlags(item_pos.flags() & ~Qt.ItemIsEditable)
             if p.resultado and p.resultado != "---" and p.resultado != "00:00.00":
-                self.tabla_resultados.setItem(row, 4, QTableWidgetItem(f"{pos_contador}"))
                 pos_contador += 1
-            else:
-                self.tabla_resultados.setItem(row, 4, QTableWidgetItem("-"))
+            self.tabla_resultados.setItem(row, 4, item_pos)
 
             # Botón Eliminar
             btn_eliminar = QPushButton("🗑")
             btn_eliminar.setFixedWidth(30)
             btn_eliminar.clicked.connect(lambda ch=False, pid=p.id_participacion: self.confirmar_eliminacion(pid))
             self.tabla_resultados.setCellWidget(row, 5, btn_eliminar)
+
+        # Volver a conectar la señal al finalizar la carga
+        self.tabla_resultados.itemChanged.connect(self.al_cambiar_item_tabla)
 
     def procesar_carga_resultado(self):
         """Captura los datos de los inputs y los manda al repositorio."""
@@ -249,7 +305,7 @@ class PruebaWidget(QFrame):
 
             self.input_mm.setText("00")
             self.input_ss.setText("00")
-            self.input_cc.setText("000")
+            self.input_cc.setText("00")
             self.cargar_participantes()
             self.input_dorsal.setFocus()
 
@@ -260,9 +316,88 @@ class PruebaWidget(QFrame):
                 f"No se encontró al atleta con dorsal {dorsal_str} en la instancia '{instancia_carga}'."
             )
 
+    def al_cambiar_item_tabla(self, item):
+        if item.column() != 0:
+            return
+            
+        id_participacion = item.data(Qt.UserRole)
+        if id_participacion is None:
+            return
+            
+        nuevo_dorsal_str = item.text().strip()
+        
+        if not nuevo_dorsal_str or nuevo_dorsal_str == "---":
+            self.participacion_repo.actualizar_dorsal(id_participacion, None)
+            self.cargar_participantes()
+            return
+            
+        try:
+            nuevo_dorsal = int(nuevo_dorsal_str)
+        except ValueError:
+            QMessageBox.warning(self, "Error", "El dorsal debe ser un número entero.")
+            self.cargar_participantes()
+            return
+
+        # Validar si el dorsal ya está ocupado por otro atleta en la prueba
+        conn = self.participacion_repo.db.obtener_conexion()
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) FROM PARTICIPA 
+                WHERE id_prueba = ? AND numero_dorsal = ? AND id_participacion != ?
+            """, (self.prueba.id_prueba, nuevo_dorsal, id_participacion))
+            duplicados = cursor.fetchone()[0]
+
+        if duplicados > 0:
+            QMessageBox.warning(self, "Error", f"El dorsal {nuevo_dorsal} ya está siendo usado por otro atleta en esta prueba.")
+            self.cargar_participantes()
+            return
+
+        self.participacion_repo.actualizar_dorsal(id_participacion, nuevo_dorsal)
+        self.cargar_participantes()
+
     def confirmar_eliminacion(self, id_participacion):
         res = QMessageBox.question(self, "Confirmar", "¿Desea eliminar este atleta de la prueba?",
                                     QMessageBox.Yes | QMessageBox.No)
         if res == QMessageBox.Yes:
             self.participacion_repo.eliminar_participacion(id_participacion)
             self.cargar_participantes()
+
+    def abrir_editar_prueba(self):
+        from ui.views.dialogs.nueva_prueba_dialog import NuevaPruebaDialog
+        from database.repositories.prueba_repository import PruebaRepository
+        prueba_repo = PruebaRepository(self.participacion_repo.db)
+        
+        dialog = NuevaPruebaDialog(self.prueba.id_torneo, prueba=self.prueba, parent=self)
+        if dialog.exec() == QDialog.Accepted:
+            try:
+                prueba_repo.actualizar(dialog.prueba_creada)
+                self.prueba = dialog.prueba_creada
+                # Actualizar título de cabecera
+                icon = "  ▼ " if self.is_expanded else "  ▶ "
+                self.header_button.setText(f"{icon} {self.prueba.nombre} - {self.prueba.categoria} ({self.prueba.sexo})")
+                self.cargar_participantes()
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"No se pudo actualizar la prueba:\n{str(e)}")
+                 
+    def confirmar_eliminacion_prueba(self):
+        res = QMessageBox.warning(
+            self,
+            "Confirmar Eliminación",
+            "¿Está seguro de que desea eliminar esta prueba?\n\n¡ADVERTENCIA! Se eliminarán todas las inscripciones y resultados cargados para esta prueba.",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if res == QMessageBox.Yes:
+            from database.repositories.prueba_repository import PruebaRepository
+            prueba_repo = PruebaRepository(self.participacion_repo.db)
+            try:
+                prueba_repo.eliminar(self.prueba.id_prueba)
+                # Recargar pruebas en TorneosView buscando en ancestros
+                widget = self.parentWidget()
+                while widget:
+                    if hasattr(widget, "cargar_pruebas"):
+                        widget.cargar_pruebas()
+                        break
+                    widget = widget.parentWidget()
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"No se pudo eliminar la prueba:\n{str(e)}")

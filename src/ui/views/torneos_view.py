@@ -30,7 +30,7 @@ class TorneosView(QWidget):
         titulo = QLabel("Gestión de Torneos")
         titulo.setStyleSheet("font-size: 24px; font-weight: bold; color: #2c3e50;")
         
-        self.btn_nuevo_torneo = QPushButton("+ Nuevo Torneo")
+        self.btn_nuevo_torneo = QPushButton("Nuevo Torneo")
         self.btn_nuevo_torneo.clicked.connect(self.abrir_dialogo_nuevo_torneo)
         self.btn_nuevo_torneo.setStyleSheet("background-color: #2980b9; color: white; padding: 8px; font-weight: bold; border-radius: 4px;")
         
@@ -40,9 +40,15 @@ class TorneosView(QWidget):
         self.layout.addLayout(self.header_layout)
 
         # --- TABLA DE TORNEOS ---
-        self.tabla_torneos = QTableWidget(0, 3)
-        self.tabla_torneos.setHorizontalHeaderLabels(["Nombre", "Edición", "Fecha de Inicio"])
-        self.tabla_torneos.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.tabla_torneos = QTableWidget(0, 4)
+        self.tabla_torneos.setHorizontalHeaderLabels(["Nombre", "Edición", "Fecha", "Acciones"])
+        
+        header = self.tabla_torneos.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)          # Nombre
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents) # Edición
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents) # Fecha 
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents) # Acciones
+        
         self.tabla_torneos.setSelectionBehavior(QTableWidget.SelectRows)
         self.tabla_torneos.setFixedHeight(150) # Ocupa poco espacio arriba
         self.tabla_torneos.itemSelectionChanged.connect(self.al_seleccionar_torneo)
@@ -59,7 +65,7 @@ class TorneosView(QWidget):
         self.btn_reporte.setVisible(False)
         self.btn_reporte.clicked.connect(self.exportar_excel)
 
-        self.btn_nueva_prueba = QPushButton("+ Nueva Prueba")
+        self.btn_nueva_prueba = QPushButton("Nueva Prueba")
         self.btn_nueva_prueba.setStyleSheet("background-color: #e67e22; color: white; padding: 5px 15px; font-weight: bold; border-radius: 4px;")
         self.btn_nueva_prueba.setVisible(False)
         self.btn_nueva_prueba.clicked.connect(self.abrir_dialogo_nueva_prueba)
@@ -99,9 +105,28 @@ class TorneosView(QWidget):
             self.tabla_torneos.setItem(row, 0, item_nombre)
             self.tabla_torneos.setItem(row, 1, QTableWidgetItem(str(torneo.edicion)))
             self.tabla_torneos.setItem(row, 2, QTableWidgetItem(torneo.fecha_inicio))
-            # self.tabla_torneos.setItem(row, 0, QTableWidgetItem(torneo.nombre))
-            # self.tabla_torneos.setItem(row, 1, QTableWidgetItem(str(torneo.edicion)))
-            # self.tabla_torneos.setItem(row, 2, QTableWidgetItem(torneo.fecha_inicio))
+            
+            # Botones de Acciones
+            actions_widget = QWidget()
+            actions_layout = QHBoxLayout(actions_widget)
+            actions_layout.setContentsMargins(0, 0, 0, 0)
+            actions_layout.setSpacing(5)
+            
+            btn_edit = QPushButton("✏️")
+            btn_edit.setToolTip("Editar Torneo")
+            btn_edit.setFixedWidth(30)
+            btn_edit.clicked.connect(lambda checked=False, t=torneo: self.abrir_editar_torneo(t))
+            
+            btn_delete = QPushButton("🗑️")
+            btn_delete.setToolTip("Eliminar Torneo")
+            btn_delete.setFixedWidth(30)
+            btn_delete.clicked.connect(lambda checked=False, tid=torneo.id_torneo: self.confirmar_eliminacion_torneo(tid))
+            
+            actions_layout.addWidget(btn_edit)
+            actions_layout.addWidget(btn_delete)
+            actions_layout.addStretch()
+            
+            self.tabla_torneos.setCellWidget(row, 3, actions_widget)
     
     def abrir_dialogo_nuevo_torneo(self):
         """
@@ -133,6 +158,9 @@ class TorneosView(QWidget):
         # Tomamos la fila seleccionada y sacamos el ID oculto
         fila = selected_items[0].row()
         item_nombre = self.tabla_torneos.item(fila, 0)
+        if not item_nombre:
+            return
+            
         self.torneo_seleccionado_id = item_nombre.data(Qt.UserRole)
         
         # Actualizamos la UI
@@ -196,3 +224,42 @@ class TorneosView(QWidget):
                 QMessageBox.information(self, "Éxito", "Reporte generado correctamente.")
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"No se pudo generar el Excel:\n{str(e)}")
+
+    def abrir_editar_torneo(self, torneo):
+        dialog = NuevoTorneoDialog(
+            self.repo, self.repo_prueba, self.repo_atleta, self.repo_participacion, 
+            torneo=torneo, parent=self
+        )
+        if dialog.exec() == QDialog.Accepted:
+            try:
+                self.repo.actualizar(dialog.torneo_creado)
+                self.cargar_torneos()
+                if self.torneo_seleccionado_id == torneo.id_torneo:
+                    self.label_pruebas.setText(f"Pruebas de: {dialog.torneo_creado.nombre}")
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"No se pudo guardar el torneo:\n{str(e)}")
+
+    def confirmar_eliminacion_torneo(self, id_torneo):
+        res = QMessageBox.warning(
+            self,
+            "Confirmar Eliminación",
+            "¿Está seguro de que desea eliminar este torneo?\n\n¡ADVERTENCIA! Se eliminarán en cascada todas sus pruebas, inscripciones y marcas/tiempos asociados de forma permanente.",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if res == QMessageBox.Yes:
+            try:
+                self.repo.eliminar(id_torneo)
+                if self.torneo_seleccionado_id == id_torneo:
+                    self.torneo_seleccionado_id = None
+                    self.label_pruebas.setText("Seleccione un torneo para ver sus pruebas")
+                    self.btn_nueva_prueba.setVisible(False)
+                    self.btn_reporte.setVisible(False)
+                    # Limpiar el layout de pruebas
+                    while self.layout_pruebas.count():
+                        item = self.layout_pruebas.takeAt(0)
+                        widget = item.widget()
+                        if widget:
+                            widget.deleteLater()
+                self.cargar_torneos()
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"No se pudo eliminar el torneo:\n{str(e)}")

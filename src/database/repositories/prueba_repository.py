@@ -23,3 +23,21 @@ class PruebaRepository:
             prueba.id_prueba = cursor.lastrowid
             conn.commit()
             return prueba
+
+    def actualizar(self, prueba: Prueba):
+        query = """UPDATE PRUEBA 
+                   SET nombre = ?, categoria = ?, sexo = ? 
+                   WHERE id_prueba = ?"""
+        with self.db.obtener_conexion() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, (prueba.nombre, prueba.categoria, prueba.sexo, prueba.id_prueba))
+            conn.commit()
+
+    def eliminar(self, id_prueba: int):
+        with self.db.obtener_conexion() as conn:
+            cursor = conn.cursor()
+            # 1. Eliminar participaciones asociadas a la prueba
+            cursor.execute("DELETE FROM PARTICIPA WHERE id_prueba = ?", (id_prueba,))
+            # 2. Eliminar la prueba
+            cursor.execute("DELETE FROM PRUEBA WHERE id_prueba = ?", (id_prueba,))
+            conn.commit()

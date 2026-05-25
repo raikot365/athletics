@@ -13,6 +13,7 @@ class Atleta:
     nombre: str = ""
     apellido: str = ""
     fecha_nacimiento: date = None
+    genero: str = "M"
     id_localidad: int = None
     provincia: str = "Misiones"
     club: str = ""

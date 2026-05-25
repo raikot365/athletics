@@ -27,6 +27,7 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("Sistema de Gestión de Atletismo - Misiones")
         self.resize(1100, 700)
+        
 
         # Widget central y layout horizontal principal
         self.central_widget = QWidget()
@@ -38,6 +39,7 @@ class MainWindow(QMainWindow):
         # Inicializar componentes
         self._setup_sidebar()
         self._setup_main_area()
+        self.showMaximized()
 
     def _setup_sidebar(self):
         """

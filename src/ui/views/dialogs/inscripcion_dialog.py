@@ -64,6 +64,7 @@ class InscripcionDialog(QDialog):
         self.btn_inscribir = QPushButton("Confirmar Inscripción")
         self.btn_inscribir.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold; padding: 8px;")
         self.btn_inscribir.setEnabled(False)
+        self.btn_inscribir.setDefault(True)
         
         btn_layout.addWidget(self.btn_cancelar)
         btn_layout.addWidget(self.btn_inscribir)
@@ -103,9 +104,17 @@ class InscripcionDialog(QDialog):
         dorsal = self.input_dorsal.text().strip()
         instancia = self.input_instancia.text().strip()
 
-        if not dorsal or not self.atleta_seleccionado_id:
-            QMessageBox.warning(self, "Error", "Debe seleccionar un atleta e ingresar un dorsal.")
+        if not self.atleta_seleccionado_id:
+            QMessageBox.warning(self, "Error", "Debe seleccionar un atleta.")
             return
+
+        dorsal_val = None
+        if dorsal:
+            try:
+                dorsal_val = int(dorsal)
+            except ValueError:
+                QMessageBox.warning(self, "Error", "El dorsal debe ser un número entero.")
+                return
 
         # Aquí llamaríamos al ParticipacionRepository para insertar
         from models.participacion import Participacion
@@ -113,7 +122,7 @@ class InscripcionDialog(QDialog):
             id_atleta=self.atleta_seleccionado_id,
             id_prueba=self.id_prueba,
             instancia=instancia,
-            numero_dorsal=int(dorsal)
+            numero_dorsal=dorsal_val
         )
         
         # Guardamos en una propiedad para que el widget padre la use

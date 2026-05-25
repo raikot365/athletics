@@ -46,6 +46,7 @@ class DatabaseManager:
                     nombre TEXT NOT NULL,
                     apellido TEXT NOT NULL,
                     fecha_nacimiento TEXT NOT NULL,
+                    genero TEXT NOT NULL CHECK(genero IN ('M', 'F')),
                     id_localidad INTEGER,
                     provincia TEXT DEFAULT 'Misiones',
                     club TEXT,
@@ -94,6 +95,12 @@ class DatabaseManager:
             if cursor.fetchone()[0] == 0:
                 self._poblar_localidades(cursor)
             
+            # Migración: Verificar si la columna genero existe en la tabla ATLETA
+            cursor.execute("PRAGMA table_info(ATLETA)")
+            columnas = [info[1] for info in cursor.fetchall()]
+            if columnas and "genero" not in columnas:
+                cursor.execute("ALTER TABLE ATLETA ADD COLUMN genero TEXT CHECK(genero IN ('M', 'F')) DEFAULT 'M'")
+
             conn.commit()
             print("Base de datos inicializada correctamente.")
 

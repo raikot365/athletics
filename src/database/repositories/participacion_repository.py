@@ -93,11 +93,21 @@ class ParticipacionRepository:
     ## Valida si un número de dorsal ya está siendo usado en una prueba específica.
     #  @return True si el dorsal está disponible.
     def validar_dorsal_disponible(self, id_prueba, numero_dorsal):
+        if numero_dorsal is None:
+            return True
         query = "SELECT COUNT(*) FROM PARTICIPA WHERE id_prueba = ? AND numero_dorsal = ?"
         with self.db.obtener_conexion() as conn:
             cursor = conn.cursor()
             cursor.execute(query, (id_prueba, numero_dorsal))
             return cursor.fetchone()[0] == 0
+
+    def actualizar_dorsal(self, id_participacion, numero_dorsal):
+        """Actualiza el número de dorsal de una participación."""
+        query = "UPDATE PARTICIPA SET numero_dorsal = ? WHERE id_participacion = ?"
+        with self.db.obtener_conexion() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, (numero_dorsal, id_participacion))
+            conn.commit()
 
     ## Obtiene atletas que NO están inscritos en una prueba específica.
     #  Útil para el buscador de la interfaz de inscripción.

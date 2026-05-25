@@ -14,3 +14,12 @@ class LocalidadRepository:
             cursor = conn.cursor()
             cursor.execute(query)
             return [Localidad(**dict(row)) for row in cursor.fetchall()]
+    
+    def get_nombre(self, localidad_id):
+        """Retorna el nombre de la localidad dado su ID."""
+        query = "SELECT nombre FROM LOCALIDAD WHERE id_localidad = ?"
+        with self.db.obtener_conexion() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, (localidad_id,))
+            result = cursor.fetchone()
+            return result[0] if result else "Desconocida"

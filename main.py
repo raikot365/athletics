@@ -6,6 +6,9 @@ import os
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QIcon
 
+# --- AGREGAR LA CARPETA 'src' AL PATH DE PYTHON ---
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src'))
+
 # --- GESTIÓN DE RUTAS PARA RECURSOS (LOGO) ---
 def resource_path(relative_path):
     """ Gestiona rutas para archivos internos en el .exe y desarrollo. """
@@ -16,8 +19,8 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 # Importamos desde la carpeta 'src'
-from src.database.database_manager import DatabaseManager
-from src.ui.main_window import MainWindow
+from database.database_manager import DatabaseManager
+from ui.main_window import MainWindow
 
 def bootstrap():
     """ Inicializa la base de datos antes de arrancar. """
@@ -43,7 +46,7 @@ def main():
     # Iniciar servicios e interfaz
     db_manager = bootstrap()
     window = MainWindow(db_manager)
-    window.setWindowTitle("Atletismo v1.0")
+    window.setWindowTitle("Atletismo v1.1")
     window.show()
 
     sys.exit(app.exec())

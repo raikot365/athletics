@@ -11,26 +11,28 @@ class NuevoTorneoDialog(QDialog):
     """
     Ventana emergente que captura los datos para un nuevo torneo.
     """
-    def __init__(self, torneo_repo, prueba_repo, atleta_repo, participacion_repo, parent=None):
+    def __init__(self, torneo_repo, prueba_repo, atleta_repo, participacion_repo, torneo=None, parent=None):
         super().__init__(parent)
         self.repo = torneo_repo
         self.repo_prueba = prueba_repo
         self.atleta_repo = atleta_repo           
         self.participacion_repo = participacion_repo
+        self.torneo = torneo
         
-
-        self.setWindowTitle("Crear Nuevo Torneo")
+        if self.torneo:
+            self.setWindowTitle("Editar Torneo")
+        else:
+            self.setWindowTitle("Crear Nuevo Torneo")
         self.setFixedSize(350, 250)
         self.torneo_creado = None # Aquí guardaremos el objeto si se guarda con éxito
         self.torneo_seleccionado_id = None
         self._setup_ui()
-        # self.cargar_torneos()
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
 
         # --- Nombre del Torneo ---
-        layout.addWidget(QLabel("Nombre del Torneo:"))
+        layout.addWidget(QLabel('<html><font color="red">*</font> Nombre del Torneo:</html>'))
         self.input_nombre = QLineEdit()
         self.input_nombre.setPlaceholderText("Ej: Campeonato Provincial U20")
         layout.addWidget(self.input_nombre)
@@ -57,6 +59,7 @@ class NuevoTorneoDialog(QDialog):
         self.btn_cancelar = QPushButton("Cancelar")
         self.btn_guardar = QPushButton("Guardar")
         self.btn_guardar.setStyleSheet("background-color: #27ae60; color: white; font-weight: bold;")
+        self.btn_guardar.setDefault(True)
         
         btn_layout.addWidget(self.btn_cancelar)
         btn_layout.addWidget(self.btn_guardar)
@@ -65,6 +68,16 @@ class NuevoTorneoDialog(QDialog):
         # --- Conexiones ---
         self.btn_cancelar.clicked.connect(self.reject) # Cierra el diálogo
         self.btn_guardar.clicked.connect(self.validar_y_guardar)
+
+        # Si estamos editando, rellenamos los datos
+        if self.torneo:
+            self.input_nombre.setText(self.torneo.nombre)
+            self.input_edicion.setValue(self.torneo.edicion)
+            if self.torneo.fecha_inicio:
+                qdate = QDate.fromString(self.torneo.fecha_inicio, "yyyy-MM-dd")
+                if qdate.isValid():
+                    self.input_fecha.setDate(qdate)
+            self.btn_guardar.setText("Guardar Cambios")
 
     def validar_y_guardar(self):
         """
@@ -79,7 +92,9 @@ class NuevoTorneoDialog(QDialog):
         # Si todo está bien, construimos el modelo (convirtiendo QDate a string AAAA-MM-DD)
         fecha_str = self.input_fecha.date().toString("yyyy-MM-dd")
         
+        id_torneo = self.torneo.id_torneo if self.torneo else None
         self.torneo_creado = Torneo(
+            id_torneo=id_torneo,
             nombre=nombre,
             edicion=self.input_edicion.value(),
             fecha_inicio=fecha_str
